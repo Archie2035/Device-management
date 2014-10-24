@@ -1,6 +1,7 @@
 #include "widget.h"
 #include "ui_widget.h"
 #include "connection.h"
+#include <qmessagebox.h>
 Widget::Widget(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Widget)
@@ -83,7 +84,27 @@ void Widget::on_pushButton_clicked(bool checked)//取消按钮
 }
 void Widget::on_pushButton_2_clicked(bool checked)//确定按钮
 {
+        checked = checked;
         QString deviceName = ui->comboBox_equipment->currentText();//获取设备名
         QString deviceType = ui->comboBox_model->currentText();//获取设备型号
-        int selledNum = ui->spinBox_sellcount->text();//获取销量
+        int selledNum = ui->spinBox_sellcount->text().toInt();//获取销量
+
+        QSqlQuery query;
+        query.exec(QString("select sell from type where device='%1' and name='%2'").arg(deviceName).arg(deviceType));
+        query.next();
+        int sellSum = query.value(0).toInt()+selledNum;//数据库中原来的售出数量加上现在的出售数量
+        //数据库事务处理
+        QSqlDatabase::database().transaction();
+        bool flag = query.exec(QString("update type set sell='%1' where device='%2' and name='%3'").arg(sellSum).arg(deviceName).arg(deviceType));
+        if(flag)
+        {
+            QSqlDatabase::database().commit();
+            QMessageBox::information(this,tr("友情提示"),tr("设备信息已更新"),QMessageBox::Ok);
+            on_pushButton_clicked(true);
+        }
+        else
+        {
+            QSqlDatabase::database().rollback();
+        }
+
 }
